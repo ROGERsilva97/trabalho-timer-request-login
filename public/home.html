@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Trabalho-IP</title>
+<link rel="stylesheet" href="style2.css">
+</head>
+<body>
+
+<!-- Container de boas-vindas e logout -->
+<div id="welcomeContainer">
+    <span id="welcomeMsg">Bem-vindo!</span>
+</div>
+
+<div id="timer">01:00</div>
+
+<button onclick="rota200()">200 OK</button>
+<div id="res1" class="resultado">Resultado 1</div>
+
+<button onclick="rota400()">400 Bad Request</button>
+<div id="res2" class="resultado">Resultado 2</div>
+
+<button onclick="rota401()">401 Não Autorizado</button>
+<div id="res3" class="resultado">Resultado 3</div>
+
+<button onclick="rota404()">404 Não Encontrado</button>
+<div id="res4" class="resultado">Resultado 4</div>
+
+<button onclick="rota500()">500 Erro Interno</button>
+<div id="res5" class="resultado">Resultado 5</div>
+
+<script>
+const baseURL = "http://localhost:3000";
+
+// Puxar nome do usuário logado
+async function pegarUsuario() {
+    try {
+        const res = await fetch(`${baseURL}/usuario`, { credentials: 'include' });
+        if(res.ok){
+            const data = await res.json();
+            document.getElementById("welcomeMsg").textContent = `Bem-vindo, ${data.username}!`;
+        } else {
+            document.getElementById("welcomeMsg").textContent = `Bem-vindo!`;
+        }
+    } catch(err){
+        console.error(err);
+        document.getElementById("welcomeMsg").textContent = `Bem-vindo!`;
+    }
+}
+pegarUsuario();
+
+// Logout
+function logout() {
+    fetch(`${baseURL}/logout`, { method: 'GET', credentials: 'include' })
+        .then(() => window.location.href = '/')
+        .catch(err => console.error(err));
+}
+
+// Timer de 1 minuto
+let tempo = 60; // segundos
+let intervalo = null;
+const timerDiv = document.getElementById('timer');
+
+function atualizarTimer() {
+    const minutos = Math.floor(tempo / 60).toString().padStart(2, '0');
+    const segundos = (tempo % 60).toString().padStart(2, '0');
+    timerDiv.textContent = `${minutos}:${segundos}`;
+}
+
+function iniciarTimer() {
+    clearInterval(intervalo); // para qualquer timer antigo
+    tempo = 60; // reinicia para 1 minuto
+    atualizarTimer();
+    intervalo = setInterval(() => {
+        tempo--;
+        if(tempo < 0){
+            clearInterval(intervalo);
+            alert("Sessão expirada! Você será redirecionado para login.");
+            window.location.href = '/';
+        } else {
+            atualizarTimer();
+        }
+    }, 1000);
+}
+
+// inicia o timer ao carregar
+iniciarTimer();
+
+// Funções das rotas de status
+async function chamarRota(endpoint, method, divId) {
+    reiniciarTimer(); // reinicia timer ao clicar
+    const resultadoDiv = document.getElementById(divId);
+    try {
+        const res = await fetch(`${baseURL}${endpoint}`, { method, credentials: 'include' });
+        let texto;
+        const contentType = res.headers.get("content-type");
+        if(contentType && contentType.includes("application/json")){
+            const data = await res.json();
+            texto = JSON.stringify(data, null, 2);
+        } else {
+            texto = await res.text();
+        }
+        resultadoDiv.textContent = `Status: ${res.status}\n${texto}`;
+    } catch(err) {
+        resultadoDiv.textContent = `Erro: ${err.message}`;
+    }
+}
+
+// Funções de rota individuais
+async function rota200() { chamarRota("/status200","GET","res1"); }
+async function rota400() { chamarRota("/status400","GET","res2"); }
+async function rota401() { chamarRota("/status401","GET","res3"); }
+async function rota404() { chamarRota("/status404","GET","res4"); }
+async function rota500() { chamarRota("/status500","GET","res5"); }
+
+// Reiniciar timer ao clicar
+function reiniciarTimer() {
+    tempo = 60;
+    atualizarTimer();
+}
+</script>
+
+
+<div><br>  <button id="logoutBtn" onclick="logout()">Logout</button> </div>
+
+</body>
+</html>
